@@ -21,6 +21,10 @@ import androidx.core.app.NotificationCompat.PRIORITY_MAX
 
 class ForegroundService: Service(), SensorEventListener {
 
+    private lateinit var wakeLock: PowerManager.WakeLock
+    private lateinit var sensorManager: SensorManager
+    private lateinit var sensor: Sensor
+
     override fun onBind(intent: Intent): IBinder? {
         return null
     }
@@ -59,18 +63,25 @@ class ForegroundService: Service(), SensorEventListener {
 
 
         val powerManager = getSystemService(Context.POWER_SERVICE) as PowerManager
-        val wakeLock = powerManager.run {
+        wakeLock = powerManager.run {
             newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "MyApp::MyWakelockTag").apply {
                 acquire()
             }
         }
 
 
-        val sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
-        val sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
+        sensorManager = getSystemService(Context.SENSOR_SERVICE) as SensorManager
+        sensor = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER)
         sensorManager.registerListener(this, sensor,
             SensorManager.SENSOR_DELAY_GAME
         )
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        stopForeground(true)
+        sensorManager.unregisterListener(this, sensor)
+        wakeLock.release()
     }
 
     override fun onSensorChanged(event: SensorEvent?) {
